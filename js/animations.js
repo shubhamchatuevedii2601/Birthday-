@@ -1,74 +1,172 @@
 /**
- * js/animations.js - Handles GSAP ScrollTriggers and Scene Logic
+ * js/animations.js - The GSAP Motion Engine
+ * Handles cinematic typography reveals, 3D gallery physics, parallax imagery, and interactivity.
  */
-window.initAnimations = function() {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+window.initStoryAnimations = function() {
+    
+    // 1. ACCESSIBILITY GUARD
+    // Respect system-level reduced motion preferences
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        gsap.set('.reveal-text, .memory-card, .typewriter-target span', { opacity: 1, y: 0 });
+        return;
+    }
 
-    const typeTexts = gsap.utils.toArray('#scene-1 .typewriter-text');
-    const tl1 = gsap.timeline({ scrollTrigger: { trigger: '#scene-1', start: 'top top', end: '+=100%', pin: true, scrub: false } });
-    typeTexts.forEach((text, i) => {
-        tl1.to(text, { opacity: 1, y: -20, duration: 2, ease: "power2.out" }, `+=${i === 0 ? 0 : 1}`);
-        if(i < typeTexts.length - 1) tl1.to(text, { opacity: 0, duration: 1, delay: 1 });
+    // 2. CINEMATIC TEXT REVEALS
+    // Fades and floats text up elegantly as it enters the viewport
+    gsap.utils.toArray('.reveal-text').forEach(text => {
+        // Calculate delay based on utility classes applied in HTML
+        let startDelay = 0;
+        if (text.classList.contains('delay-1')) startDelay = 0.5;
+        if (text.classList.contains('delay-2')) startDelay = 1.0;
+
+        gsap.from(text, {
+            scrollTrigger: {
+                trigger: text,
+                start: "top 85%", // Triggers when the top of the element hits 85% of the viewport height
+                toggleActions: "play none none reverse"
+            },
+            y: 40,
+            opacity: 0,
+            duration: 1.5,
+            ease: "power3.out",
+            delay: startDelay
+        });
     });
 
-    gsap.from('#scene-2 .glass-panel', { scrollTrigger: { trigger: '#scene-2', start: 'top 80%', end: 'center center', scrub: 1 }, opacity: 0, y: 50, scale: 0.95 });
+    // 3. PARALLAX HERO IMAGE (Scene 3)
+    // Creates depth by moving the image slightly slower than the scroll speed
+    if (document.querySelector('.hero-img')) {
+        gsap.to('.hero-img', {
+            scrollTrigger: {
+                trigger: '#scene-3',
+                start: 'top bottom',
+                end: 'bottom top',
+                scrub: true // Ties animation strictly to scroll position
+            },
+            yPercent: 15, // Moves the image down 15% of its height
+            scale: 1.05,  // Slight zoom for cinematic feel
+            ease: "none"
+        });
+    }
 
-    gsap.utils.toArray('.polaroid').forEach(el => {
-        gsap.from(el, { scrollTrigger: { trigger: el, start: 'top 90%', end: 'center center', scrub: 1 }, opacity: 0, y: 100, rotation: gsap.utils.random(-15, 15) });
-    });
+    // 4. 3D MEMORY GALLERY (Scene 5)
+    // Randomizes rotation for a natural "scattered polaroids" look
+    const memoryCards = gsap.utils.toArray('.memory-card');
+    if (memoryCards.length > 0) {
+        // Initial state: hidden, pushed down, and randomly tilted
+        gsap.set(memoryCards, { 
+            opacity: 0, 
+            y: 100, 
+            rotationZ: () => gsap.utils.random(-8, 8),
+            rotationX: 15
+        });
 
-    gsap.from('#scene-4 .cinematic-text', { scrollTrigger: { trigger: '#scene-4', start: 'top 80%', end: 'center center', scrub: 1 }, y: 50, opacity: 0 });
+        // Batch trigger them so they stagger beautifully
+        ScrollTrigger.batch(memoryCards, {
+            start: "top 80%",
+            onEnter: (elements) => {
+                gsap.to(elements, {
+                    opacity: 1,
+                    y: 0,
+                    rotationX: 0,
+                    stagger: 0.2, // 0.2 seconds between each card reveal
+                    duration: 1.2,
+                    ease: "power2.out",
+                    overwrite: true
+                });
+            }
+        });
 
-    gsap.utils.toArray('.img-3d').forEach((img, i) => {
-        gsap.to(img, { scrollTrigger: { trigger: '#scene-5', start: 'top 80%', end: 'center center', scrub: 1 }, opacity: 1, y: 0, z: 0, duration: 1, delay: i * 0.1 });
-    });
+        // Add subtle floating hover effect for desktop
+        if (window.matchMedia("(pointer: fine)").matches) {
+            memoryCards.forEach(card => {
+                card.addEventListener('mouseenter', () => gsap.to(card, { scale: 1.05, rotationZ: 0, duration: 0.4, ease: "back.out(1.5)", zIndex: 10 }));
+                card.addEventListener('mouseleave', () => gsap.to(card, { scale: 1, rotationZ: gsap.utils.random(-8, 8), duration: 0.4, ease: "power2.out", zIndex: 1 }));
+            });
+        }
+    }
 
-    gsap.utils.toArray('.wish-item').forEach(wish => {
-        gsap.fromTo(wish, { opacity: 0, y: 50 }, { scrollTrigger: { trigger: wish, start: 'top 85%', end: 'top 50%', scrub: 1 }, opacity: 1, y: 0 });
-    });
+    // 5. CUSTOM TYPEWRITER EFFECT (Scene 6)
+    // Lightweight word-by-word reveal without external plugins
+    const letter = document.querySelector('.typewriter-target');
+    if (letter) {
+        // Split text into words safely
+        const words = letter.innerText.split(' ');
+        letter.innerHTML = '';
+        words.forEach(word => {
+            const span = document.createElement('span');
+            span.innerText = word + ' ';
+            span.style.opacity = 0;
+            span.style.display = 'inline-block';
+            span.style.transform = 'translateY(10px)';
+            letter.appendChild(span);
+        });
 
-    gsap.from('#scene-7 .cinematic-text', { scrollTrigger: { trigger: '#scene-7', start: 'top 75%', end: 'center center', scrub: 1 }, opacity: 0, filter: 'blur(10px)', scale: 1.05 });
-    gsap.utils.toArray('.glass-card').forEach((card, i) => {
-        gsap.to(card, { scrollTrigger: { trigger: '#scene-8', start: 'top 80%', end: 'center center', scrub: 1 }, opacity: 1, y: -20, duration: 1, delay: i * 0.2 });
-    });
+        // Animate the spans
+        gsap.to(letter.querySelectorAll('span'), {
+            scrollTrigger: {
+                trigger: '#scene-6',
+                start: 'top 75%'
+            },
+            opacity: 1,
+            y: 0,
+            stagger: 0.08,
+            duration: 0.4,
+            ease: "power1.out"
+        });
+    }
 
-    gsap.to('.letter-content', { scrollTrigger: { trigger: '#scene-11', start: 'top center' }, opacity: 1, duration: 2 });
-    gsap.utils.toArray('.letter-content p').forEach((line) => {
-        gsap.fromTo(line, { opacity: 0, y: 15 }, { scrollTrigger: { trigger: line, start: 'top 90%', end: 'top 70%', scrub: 1 }, opacity: 1, y: 0 });
-    });
+    // 6. THE GIFT INTERACTION (Scene 8 to 9)
+    const giftTrigger = document.getElementById('gift-trigger');
+    const giftBox = document.querySelector('.gift-box');
+    
+    if (giftTrigger && giftBox) {
+        // Idle animation: Soft floating
+        gsap.to(giftBox, {
+            y: -15,
+            repeat: -1,
+            yoyo: true,
+            duration: 2.5,
+            ease: "sine.inOut"
+        });
 
-    setupGiftReveal();
+        // Click Event: Open Gift and Launch Celebration
+        giftTrigger.addEventListener('click', () => {
+            giftTrigger.style.pointerEvents = 'none'; // Lock interaction
+            
+            // Interaction Timeline
+            const tl = gsap.timeline();
+            
+            // Anticipation shake
+            tl.to(giftBox, { scale: 1.1, rotation: 5, duration: 0.1, yoyo: true, repeat: 3, ease: "none" })
+              // Pop open/vanish
+              .to(giftBox, { scale: 1.5, opacity: 0, filter: "brightness(2)", duration: 0.4, ease: "power2.in" })
+              // Fade out instructions
+              .to(giftTrigger.querySelector('p'), { opacity: 0, duration: 0.3 }, "<")
+              .add(() => {
+                  // Scroll beautifully into the Celebration Fireworks Scene
+                  if (window.lenis) {
+                      window.lenis.scrollTo('#scene-9', { 
+                          duration: 2.5, 
+                          ease: "power3.inOut" 
+                      });
+                  }
+              });
+        });
+    }
+
+    // 7. CELEBRATION TITLE (Scene 9)
+    const grandTitle = document.querySelector('.grand-title');
+    if (grandTitle) {
+        gsap.from(grandTitle, {
+            scrollTrigger: {
+                trigger: '#scene-9',
+                start: "top 60%"
+            },
+            scale: 0.8,
+            opacity: 0,
+            duration: 2,
+            ease: "elastic.out(1, 0.3)"
+        });
+    }
 };
-
-function setupGiftReveal() {
-    const giftContainer = document.getElementById('gift-reveal-container');
-    const giftBox = document.getElementById('luxury-gift');
-    const video4 = document.getElementById('video-4');
-
-    if(!giftContainer || !giftBox) return;
-
-    const triggerReveal = () => {
-        giftContainer.style.pointerEvents = 'none';
-        giftBox.classList.remove('shake-anim');
-        
-        const rect = giftBox.getBoundingClientRect();
-        const x = rect.left + rect.width / 2;
-        const y = rect.top + rect.height / 2;
-        
-        if(window.createGiftBurst) window.createGiftBurst(x, y);
-
-        gsap.to(giftBox, { scale: 1.2, rotation: 15, opacity: 0, duration: 0.6, ease: "power2.in" });
-        gsap.to(giftContainer, { opacity: 0, duration: 1, delay: 0.4, onComplete: () => {
-            giftContainer.style.display = 'none';
-            video4.classList.remove('hidden');
-            if(!video4.src && video4.dataset.src) video4.src = video4.dataset.src;
-            if(window.videoObserver) window.videoObserver.observe(video4);
-            gsap.to(video4, { opacity: 0.6, duration: 2 });
-            video4.play().catch(()=>{});
-        }});
-    };
-
-    giftContainer.addEventListener('click', triggerReveal);
-    giftContainer.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' ') triggerReveal(); });
-}
-
