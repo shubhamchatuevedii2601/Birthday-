@@ -1,1 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Happy 26th Birthday</title>
+    <meta name="theme-color" content="#050505">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Great+Vibes&family=Inter:wght@300;400&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- Third-Party Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://unpkg.com/@studio-freight/lenis@1.0.33/dist/lenis.min.js"></script>
+</head>
+<body>
+
+    <!-- Scroll Progress -->
+    <div id="scroll-progress-container" aria-hidden="true">
+        <div id="scroll-progress"></div>
+    </div>
+
+    <!-- Premium Effects Overlays -->
+    <div class="aurora-bg" aria-hidden="true"></div>
+    <div class="vignette" aria-hidden="true"></div>
+    <canvas id="global-effects-canvas" aria-hidden="true"></canvas>
+
+    <!-- Custom Cursor -->
+    <div id="custom-cursor" aria-hidden="true"></div>
+
+    <!-- UI Overlay -->
+    <button id="audio-btn" aria-label="Toggle Audio">🔊</button>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <img src="assets/loading.gif" alt="Loading" class="loading-spinner">
+        <h1 class="serif gold-text">Gathering Memories</h1>
+        <div class="progress-container">
+            <div id="progress-bar-fill"></div>
+        </div>
+        <p id="progress-text">0%</p>
+        <button id="enter-btn" class="hidden" aria-label="Begin the chapter">Begin The Chapter</button>
+    </div>
+
+    <!-- MAIN SCROLL CONTAINER -->
+    <main id="app">
+        
+        <!-- SCENE 1: Typewriter -->
+        <section id="scene-1" data-bgm="media/music1.mp3">
+            <canvas id="stars-canvas" class="canvas-bg" aria-hidden="true"></canvas>
+            <div class="content">
+                <h2 class="typewriter-text serif gold-text">28 July 2000</h2>
+                <h2 class="typewriter-text serif">A beautiful story began...</h2>
+                <h2 class="typewriter-text serif">Today...</h2>
+                <h2 class="typewriter-text serif">The 26th chapter begins.</h2>
+            </div>
+        </section>
+
+        <!-- SCENE 2: Video 1 Cinematic (Ducked Volume) -->
+        <section id="scene-2" data-bgm="media/music2.mp3" data-scene-type="video">
+            <video class="smart-video fullscreen-video" preload="metadata" data-src="media/video1.mp4" muted playsinline loop></video>
+            <div class="video-overlay"></div>
+            <div class="glass-panel">
+                <h1 class="gold-text">Happy 26th Birthday 🎂</h1>
+                <p class="serif">May this year bring peace, happiness, good health, success, beautiful memories, and everything your heart quietly wishes for.</p>
+            </div>
+        </section>
+
+        <!-- SCENE 3: Photo Gallery 1 (Polaroids) -->
+        <section id="scene-3" data-bgm="media/music2.mp3">
+            <div class="gallery-container">
+                <div class="polaroid" style="--r: -5;">
+                    <img src="media/photo1.jpg" alt="Memory 1" loading="lazy">
+                </div>
+                <div class="polaroid" style="--r: 8;">
+                    <img src="media/photo2.jpg" alt="Memory 2" loading="lazy">
+                </div>
+            </div>
+        </section>
+
+        <!-- SCENE 4: Video 2 Parallax (Ducked Volume) -->
+        <section id="scene-4" data-bgm="media/music3.mp3" data-scene-type="video">
+            <video class="smart-video fullscreen-video" preload="metadata" data-src="media/video2.mp4" muted playsinline loop></video>
+            <div class="video-overlay"></div>
+            <h2 class="cinematic-text serif">Your smile makes every moment brighter.</h2>
+        </section>
+
+        <!-- SCENE 5: Gallery 3D -->
+        <section id="scene-5" data-bgm="media/music3.mp3">
+            <div class="gallery-container gallery-3d">
+                <img src="media/photo3.jpg" alt="Memory 3" loading="lazy" class="img-3d">
+                <img src="media/photo4.jpg" alt="Memory 4" loading="lazy" class="img-3d">
+                <img src="media/photo5.jpg" alt="Memory 5" loading="lazy" class="img-3d">
+            </div>
+        </section>
+
+        <!-- SCENE 6: Wishes Scroll -->
+        <section id="scene-6" data-bgm="media/music4.mp3">
+            <div class="wishes-container">
+                <div class="wish-item serif">May your dreams become reality.</div>
+                <div class="wish-item serif">May happiness always choose you.</div>
+                <div class="wish-item serif">May your smile never fade.</div>
+                <div class="wish-item serif">May every morning bring hope.</div>
+                <div class="wish-item serif">May your kindness return to you a thousand times.</div>
+                <div class="wish-item serif gold-text">May every chapter of your life become more beautiful than the last.</div>
+            </div>
+        </section>
+
+        <!-- SCENE 7: Video 3 Typography (Ducked Volume) -->
+        <section id="scene-7" data-bgm="media/music4.mp3" data-scene-type="video">
+            <video class="smart-video fullscreen-video" preload="metadata" data-src="media/video3.mp4" muted playsinline loop></video>
+            <div class="video-overlay"></div>
+            <h2 class="cinematic-text serif">Never stop smiling.<br><br>You look the most beautiful when you're simply being yourself.</h2>
+        </section>
+
+        <!-- SCENE 8: Glass Cards Gallery -->
+        <section id="scene-8" data-bgm="media/music4.mp3">
+            <div class="gallery-container">
+                <div class="glass-card">
+                    <img src="media/photo6.jpg" alt="Memory 6" loading="lazy">
+                </div>
+                <div class="glass-card">
+                    <img src="media/photo7.jpg" alt="Memory 7" loading="lazy">
+                </div>
+            </div>
+        </section>
+
+        <!-- SCENE 9: Video 4 Gift Reveal (Ducked Volume) -->
+        <section id="scene-9" data-bgm="media/music5.mp3" data-scene-type="video">
+            <video id="video-4" class="smart-video fullscreen-video hidden" preload="none" data-src="media/video4.mp4" muted playsinline loop></video>
+            <div class="video-overlay"></div>
+            
+            <div id="gift-reveal-container">
+                <img src="assets/gift-box.webp" alt="Luxury Gift Box" id="luxury-gift" class="gift-image shake-anim" role="button" tabindex="0" aria-label="Tap to Open">
+                <h1 class="cinematic-text gold-text" style="font-size: 2rem; margin-top: 30px;">Tap to Open</h1>
+            </div>
+        </section>
+
+        <!-- SCENE 10: Celebration -->
+        <section id="scene-10" data-bgm="media/music5.mp3">
+            <canvas id="fireworks-canvas" class="canvas-bg" aria-hidden="true"></canvas>
+            <h1 class="cinematic-text gold-text glow-text" style="font-size: clamp(3rem, 8vw, 6rem);">Let's Celebrate!</h1>
+        </section>
+
+        <!-- SCENE 11: Final Letter -->
+        <section id="scene-11" data-bgm="media/music5.mp3">
+            <canvas id="shooting-stars-canvas" class="canvas-bg" aria-hidden="true"></canvas>
+            <div class="letter-content handwriting">
+                <p>Happy Birthday.</p><br>
+                <p>Today is completely yours.</p>
+                <p>May every smile stay with you.</p>
+                <p>May every dream find you.</p>
+                <p>May every difficulty make you stronger.</p>
+                <p>May your life always be filled with love, laughter, peace and beautiful memories.</p><br>
+                <p>Keep smiling.</p>
+                <p>The world becomes a little brighter because you are in it.</p><br>
+                <p class="gold-text" style="font-size: 1.5em; text-shadow: 0 0 15px rgba(212,175,55,0.5);">Happy 26th Birthday ❤️</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Custom Scripts Order Matters -->
+    <script src="js/particles.js"></script>
+    <script src="js/fireworks.js"></script>
+    <script src="js/animations.js"></script>
+    <script src="js/script.js"></script>
+</body>
+  </html>
 
