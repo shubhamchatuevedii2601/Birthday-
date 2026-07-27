@@ -13,7 +13,7 @@
     
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="scroll-locked">
 
     <!-- Scroll Progress -->
     <div id="progress-container"><div id="progress-bar"></div></div>
@@ -127,12 +127,11 @@
         </div>
     </main>
 
-    <!-- MISSING DEPENDENCIES ADDED HERE -->
+    <!-- CORE DEPENDENCIES (Lenis removed for 100% guaranteed native scroll on Android) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
-    <script src="https://unpkg.com/@studio-freight/lenis@1.0.33/dist/lenis.min.js"></script>
 
-    <!-- LOCAL SCRIPTS ADDED HERE -->
+    <!-- LOCAL SCRIPTS -->
     <script src="js/particles.js"></script>
     <script src="js/fireworks.js"></script>
     <script src="js/animations.js"></script>
