@@ -1,55 +1,71 @@
 /**
- * js/script.js - Core Bootstrapping, Audio Engine, Scroll & Observers
+ * js/script.js - Core Bootstrapping, Cinematic Audio Engine, and Scroll Observer
+ * Handles the preloader, Lenis smooth scrolling, and seamless audio crossfading.
  */
 document.addEventListener('DOMContentLoaded', () => {
     
+    // 1. REGISTER GSAP PLUGINS
     gsap.registerPlugin(ScrollTrigger);
 
-    // --- LENIS SMOOTH SCROLL ---
+    // 2. INITIALIZE LENIS SMOOTH SCROLL (Optimized for both Desktop & Mobile)
     const lenis = new Lenis({
-        duration: 1.2,
+        duration: 1.5,
         easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-        smooth: true,
-        direction: 'vertical',
-        gestureDirection: 'vertical',
-        smoothTouch: false,
-        touchMultiplier: 2
+        smoothWheel: true,
+        smoothTouch: true, // Forces smooth momentum scrolling on mobile
+        touchMultiplier: 2.5,
+        infinite: false
     });
 
-    lenis.stop(); // Pause until loading is complete
+    lenis.stop(); // Lock scrolling while preloader is active
+
+    // Connect Lenis to GSAP Ticker for synchronized animations
     lenis.on('scroll', ScrollTrigger.update);
     gsap.ticker.add((time) => { lenis.raf(time * 1000); });
     gsap.ticker.lagSmoothing(0);
+    window.lenis = lenis; // Expose globally for other modules
 
-    lenis.on('scroll', ({ progress }) => {
-        document.getElementById('scroll-progress').style.width = `${progress * 100}%`;
-    });
-    window.lenis = lenis;
+    // Scroll Progress Bar Logic
+    const progressBar = document.getElementById('progress-bar');
+    const progressContainer = document.getElementById('progress-container');
+    
+    // Inject missing styles dynamically to prevent layout shifts without touching style.css
+    if (progressContainer && progressBar) {
+        Object.assign(progressContainer.style, {
+            position: 'fixed', top: 0, left: 0, width: '100%', height: '3px',
+            backgroundColor: 'rgba(255,255,255,0.05)', zIndex: 10000, pointerEvents: 'none'
+        });
+        Object.assign(progressBar.style, {
+            height: '100%', width: '0%', transformOrigin: 'left',
+            background: 'linear-gradient(90deg, #D4AF37, #F3E5AB)',
+            boxShadow: '0 0 10px rgba(212, 175, 55, 0.5)'
+        });
 
-    // --- CUSTOM CURSOR ---
-    const customCursor = document.getElementById('custom-cursor');
-    if (window.matchMedia("(pointer: fine)").matches && customCursor) {
-        window.addEventListener('mousemove', (e) => {
-            gsap.to(customCursor, { x: e.clientX, y: e.clientY, duration: 0.1, ease: "power2.out", overwrite: "auto" });
-        }, { passive: true });
-        
-        const interactables = document.querySelectorAll('button, .polaroid, .img-3d, .glass-card, #luxury-gift');
-        interactables.forEach(el => {
-            el.addEventListener('mouseenter', () => gsap.to(customCursor, { scale: 1.5, backgroundColor: 'rgba(212,175,55,0.2)' }));
-            el.addEventListener('mouseleave', () => gsap.to(customCursor, { scale: 1, backgroundColor: 'transparent' }));
+        lenis.on('scroll', ({ progress }) => {
+            progressBar.style.width = `${progress * 100}%`;
         });
     }
 
-    // --- CINEMATIC AUDIO ENGINE ---
+    // 3. CINEMATIC AUDIO ENGINE (Dual-Player Pool)
     window.AudioEngine = {
         playerA: new Audio(),
         playerB: new Audio(),
         activePlayer: null,
         isUserMuted: false, 
-        currentSrc: null,
-        baseVolume: 0.5,
-        duckVolume: 0.15, // Volume ducks when a video is playing
-        fadeDuration: 2.5, // Smooth 2.5s crossfade transition
+        currentTrackId: null,
+        baseVolume: 0.4,
+        duckVolume: 0.1, // Drastically lower volume when characters/videos speak
+        fadeDuration: 2.5, 
+        
+        // Map data-audio attributes to local files
+        tracks: {
+            'ambient-space': 'media/music1.mp3',
+            'soft-piano': 'media/music2.mp3',
+            'warm-acoustic': 'media/music3.mp3',
+            'emotional-build': 'media/music4.mp3',
+            'epic-celebration': 'media/music5.mp3',
+            'ending-piano': 'media/music6.mp3'
+        },
         
         init() {
             this.playerA.loop = true;
@@ -57,11 +73,14 @@ document.addEventListener('DOMContentLoaded', () => {
             this.activePlayer = this.playerA;
         },
         
-        playTrack(src, isVideo) {
-            const targetVol = isVideo ? this.duckVolume : this.baseVolume;
+        playTrack(trackId, shouldDuck) {
+            const src = this.tracks[trackId];
+            if (!src) return;
+
+            const targetVol = shouldDuck ? this.duckVolume : this.baseVolume;
             
-            // If same track, simply adjust volume via crossfade (for video ducking)
-            if (this.currentSrc === src) {
+            // If the same track is playing, just gracefully adjust the volume (duck/unduck)
+            if (this.currentTrackId === trackId) {
                 if (!this.isUserMuted) {
                     gsap.to(this.activePlayer, { volume: targetVol, duration: this.fadeDuration, overwrite: true });
                 }
@@ -69,7 +88,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            this.currentSrc = src;
+            // Crossfade to new track
+            this.currentTrackId = trackId;
             const nextPlayer = this.activePlayer === this.playerA ? this.playerB : this.playerA;
             const oldPlayer = this.activePlayer;
             
@@ -77,8 +97,10 @@ document.addEventListener('DOMContentLoaded', () => {
             nextPlayer.volume = 0;
             
             if (!this.isUserMuted) {
-                nextPlayer.play().catch(()=>{});
+                nextPlayer.play().catch(() => {}); // Catch prevents iOS unhandled promise errors
                 gsap.to(nextPlayer, { volume: targetVol, duration: this.fadeDuration, overwrite: true });
+                
+                // Fade out old track then pause to save memory
                 gsap.to(oldPlayer, { volume: 0, duration: this.fadeDuration, overwrite: true, onComplete: () => {
                     oldPlayer.pause();
                 }});
@@ -89,44 +111,26 @@ document.addEventListener('DOMContentLoaded', () => {
             
             this.activePlayer = nextPlayer;
             this.activePlayer.targetVol = targetVol;
-        },
-        
-        toggleMute() {
-            this.isUserMuted = !this.isUserMuted;
-            if (this.isUserMuted) {
-                gsap.to(this.activePlayer, { volume: 0, duration: 1, overwrite: true, onComplete: () => {
-                    this.activePlayer.pause();
-                }});
-            } else {
-                this.activePlayer.play().catch(()=>{});
-                gsap.to(this.activePlayer, { volume: this.activePlayer.targetVol || this.baseVolume, duration: 1, overwrite: true });
-            }
         }
     };
     window.AudioEngine.init();
 
-    // Scene Audio Observer (Detects current scene and triggers correct soundtrack)
-    const audioObserver = new IntersectionObserver((entries) => {
+    // 4. SCENE OBSERVER (Triggers audio changes automatically)
+    const sceneObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
-                const src = entry.target.dataset.bgm;
-                const isVideo = entry.target.dataset.sceneType === 'video';
-                if (src) window.AudioEngine.playTrack(src, isVideo);
+                const trackId = entry.target.getAttribute('data-audio');
+                const shouldDuck = entry.target.getAttribute('data-duck-audio') === 'true';
+                if (trackId) {
+                    window.AudioEngine.playTrack(trackId, shouldDuck);
+                }
             }
         });
-    }, { threshold: 0.5 }); // Triggers when 50% of the section is visible
+    }, { threshold: 0.5 }); // Fire when a scene takes over 50% of the screen
 
-    document.querySelectorAll('section[data-bgm]').forEach(sec => audioObserver.observe(sec));
+    document.querySelectorAll('.scene[data-audio]').forEach(sec => sceneObserver.observe(sec));
 
-    // Audio UI Toggle
-    const audioBtn = document.getElementById('audio-btn');
-    audioBtn.addEventListener('click', () => {
-        window.AudioEngine.toggleMute();
-        audioBtn.innerHTML = window.AudioEngine.isUserMuted ? '🔇' : '🔊';
-    });
-
-
-    // --- VIDEO INTERSECTION OBSERVER ---
+    // 5. VIDEO OBSERVER (Lazy load & auto-pause videos for performance)
     const videoObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             const video = entry.target;
@@ -135,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     video.src = video.dataset.src;
                     video.load();
                 }
-                gsap.to(video, { opacity: 0.5, duration: 2 });
+                gsap.to(video, { opacity: 0.7, duration: 2 });
                 video.play().catch(()=>{});
             } else {
                 video.pause();
@@ -143,71 +147,54 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }, { threshold: 0.1 });
 
-    document.querySelectorAll('.smart-video').forEach(video => {
-        if(!video.classList.contains('hidden')) {
-            videoObserver.observe(video);
-        }
-    });
-    window.videoObserver = videoObserver;
+    document.querySelectorAll('.story-video').forEach(vid => videoObserver.observe(vid));
 
-
-    // --- PRELOADER ---
+    // 6. PRELOADER & BYPASS AUTOPLAY RESTRICTIONS
     const initPreloader = () => {
         let progress = 0;
-        const progressFill = document.getElementById('progress-bar-fill');
-        const progressText = document.getElementById('progress-text');
+        const loaderFill = document.querySelector('.loader-fill');
+        const loadText = document.getElementById('load-text');
         const enterBtn = document.getElementById('enter-btn');
-        const loadingScreen = document.getElementById('loading-screen');
+        const preloader = document.getElementById('preloader');
         
+        // Simulate asset loading
         const simInterval = setInterval(() => {
-            if (progress < 90) {
-                progress += Math.random() * 8;
-                if (progress > 90) progress = 90;
-                progressFill.style.width = `${progress}%`;
-                progressText.innerText = `${Math.floor(progress)}%`;
+            if (progress < 100) {
+                progress += Math.random() * 12;
+                if (progress > 100) progress = 100;
+                if (loaderFill) loaderFill.style.width = `${progress}%`;
+                if (loadText) loadText.innerText = `Igniting stars... ${Math.floor(progress)}%`;
+            } else {
+                clearInterval(simInterval);
+                if (loadText) loadText.style.display = 'none';
+                if (enterBtn) enterBtn.classList.remove('hidden');
             }
         }, 150);
 
-        const loadComplete = () => {
-            clearInterval(simInterval);
-            progressFill.style.width = `100%`;
-            progressText.innerText = `100%`;
-            setTimeout(() => {
-                progressText.style.display = 'none';
-                document.querySelector('.progress-container').style.display = 'none';
-                document.querySelector('#loading-screen h1').innerText = "An Elegant Journey";
+        if (enterBtn) {
+            enterBtn.addEventListener('click', () => {
+                // Fade out preloader
+                gsap.to(preloader, { opacity: 0, duration: 1.5, ease: "power2.inOut", onComplete: () => {
+                    preloader.style.display = 'none';
+                    lenis.start(); // Unlock scrolling
+                    
+                    // Trigger animations module (Will be built in Phase 4)
+                    if(window.initStoryAnimations) window.initStoryAnimations();
+                }});
                 
-                const spinner = document.querySelector('.loading-spinner');
-                if(spinner) spinner.style.display = 'none';
-
-                enterBtn.classList.remove('hidden');
-                enterBtn.classList.add('visible');
-            }, 500);
-        };
-
-        if (document.readyState === 'complete') {
-            setTimeout(loadComplete, 1000);
-        } else {
-            window.addEventListener('load', () => setTimeout(loadComplete, 500));
+                // Audio context requires a user click to start on modern browsers
+                const firstScene = document.getElementById('scene-1');
+                if (firstScene) {
+                    window.AudioEngine.playTrack(firstScene.getAttribute('data-audio'), false);
+                }
+            });
         }
-
-        enterBtn.addEventListener('click', () => {
-            gsap.to(loadingScreen, { opacity: 0, duration: 1, ease: "power2.inOut", onComplete: () => {
-                loadingScreen.style.display = 'none';
-                lenis.start();
-                
-                // Initialize modules
-                if(window.initParticles) window.initParticles();
-                if(window.initFireworks) window.initFireworks();
-                if(window.initAnimations) window.initAnimations();
-            }});
-            
-            // Kickstart AudioEngine with user gesture payload on Scene 1
-            const firstScene = document.getElementById('scene-1');
-            window.AudioEngine.playTrack(firstScene.dataset.bgm, false);
-        });
     };
 
-    initPreloader();
+    // Ensure DOM is fully painted before initiating
+    if (document.readyState === 'complete') {
+        setTimeout(initPreloader, 500);
+    } else {
+        window.addEventListener('load', () => setTimeout(initPreloader, 500));
+    }
 });
-
