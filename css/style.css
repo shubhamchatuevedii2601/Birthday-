@@ -13,7 +13,7 @@
     --glass-border: rgba(255, 255, 255, 0.08);
 }
 
-/* --- RESET & SCROLL UNLOCK (MOBILE FIX) --- */
+/* --- RESET & NATIVE SCROLL ARCHITECTURE --- */
 * {
     margin: 0; 
     padding: 0; 
@@ -24,28 +24,28 @@ html, body {
     background-color: var(--bg-deep);
     color: var(--text-main);
     font-family: 'Inter', sans-serif;
-    overscroll-behavior: none; 
-    touch-action: pan-y; /* CRITICAL: Allows vertical touch scrolling on Android/iOS */
-    overflow-x: hidden !important;
-    overflow-y: auto !important; /* CRITICAL: Native fallback for vertical scroll */
     width: 100%;
-    height: auto !important; /* CRITICAL: Prevents 100vh locking */
+    overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
 }
 
-/* CRITICAL: Explicit definitions for GSAP/Lenis wrappers to prevent scroll trapping */
+/* Preloader Lock - Safest cross-browser method to prevent scrolling during load */
+body.scroll-locked {
+    overflow: hidden !important;
+    height: 100vh !important;
+    touch-action: none;
+}
+
+/* Clean standard wrapper for GSAP */
 #smooth-wrapper {
     position: relative;
     width: 100%;
-    height: auto;
     overflow-x: hidden;
-    overflow-y: visible; /* Allows content to push height downwards naturally */
 }
 
 #smooth-content {
     position: relative;
     width: 100%;
-    height: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {
