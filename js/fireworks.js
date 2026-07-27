@@ -1,64 +1,119 @@
-window.initFireworks = function() {
+/**
+ * js/fireworks.js - Cinematic Fireworks Engine
+ * Dormant until Scene 9 is visible. Uses physics for realistic bursts.
+ */
+document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('fireworks-canvas');
-    if(!canvas) return;
-    
+    if (!canvas) return;
+
     const ctx = canvas.getContext('2d', { alpha: true });
-    let w, h, rafId, isVisible = false;
+    let w, h;
+    let particles = [];
+    let isCelebrationActive = false;
+    let animationFrameId;
 
-    const resize = () => { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; };
-    window.addEventListener('resize', resize); resize();
+    const resize = () => {
+        w = canvas.width = window.innerWidth;
+        h = canvas.height = window.innerHeight;
+    };
+    window.addEventListener('resize', resize, { passive: true });
+    resize();
 
-    const fwColors = ['#D4AF37', '#FFC0CB', '#800080', '#FFFFFF', '#FFD700'];
-    let fwParticles = [];
+    // Premium Color Palette
+    const colors = ['#D4AF37', '#FFC0CB', '#800080', '#FFFFFF', '#FFD700'];
 
-    class FWParticle {
+    // --- FIREWORK PARTICLE CLASS ---
+    class Particle {
         constructor(x, y, color) {
-            this.x = x; this.y = y; this.color = color;
+            this.x = x;
+            this.y = y;
+            this.color = color;
             const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * 10 + 2;
-            this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
-            this.friction = 0.95; this.gravity = 0.15;
-            this.alpha = 1; this.decay = Math.random() * 0.015 + 0.01;
+            const velocity = Math.random() * 8 + 2; // Explosive force
+            this.vx = Math.cos(angle) * velocity;
+            this.vy = Math.sin(angle) * velocity;
+            this.friction = 0.96; // Air resistance
+            this.gravity = 0.15;  // Fall weight
+            this.alpha = 1;
+            this.decay = Math.random() * 0.015 + 0.01; // Fade out speed
         }
         update() {
-            this.vx *= this.friction; this.vy *= this.friction; this.vy += this.gravity;
-            this.x += this.vx; this.y += this.vy; this.alpha -= this.decay;
+            this.vx *= this.friction;
+            this.vy *= this.friction;
+            this.vy += this.gravity;
+            this.x += this.vx;
+            this.y += this.vy;
+            this.alpha -= this.decay;
         }
         draw(ctx) {
-            ctx.save(); ctx.globalAlpha = this.alpha;
-            ctx.beginPath(); ctx.arc(this.x, this.y, 1.5, 0, Math.PI*2);
-            ctx.fillStyle = this.color; ctx.shadowBlur = 8; ctx.shadowColor = this.color;
-            ctx.fill(); ctx.restore();
+            ctx.save();
+            ctx.globalAlpha = this.alpha;
+            ctx.fillStyle = this.color;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
         }
     }
 
-    const drawLogic = () => {
+    // --- RENDER LOOP ---
+    const render = () => {
+        if (!isCelebrationActive) return;
+
+        // Trail effect using semi-transparent clear
         ctx.globalCompositeOperation = 'destination-out';
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
         ctx.fillRect(0, 0, w, h);
         ctx.globalCompositeOperation = 'lighter';
-        
-        if(Math.random() < 0.04) {
-            const cx = Math.random() * w; const cy = Math.random() * (h*0.6);
-            const color = fwColors[Math.floor(Math.random()*fwColors.length)];
-            for(let i=0; i<60; i++) fwParticles.push(new FWParticle(cx, cy, color));
+
+        // Randomly launch fireworks (throttle based on performance/aesthetics)
+        if (Math.random() < 0.05) {
+            const originX = Math.random() * (w * 0.8) + (w * 0.1);
+            const originY = Math.random() * (h * 0.5) + (h * 0.1);
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            
+            // Spawn burst
+            for (let i = 0; i < 60; i++) {
+                particles.push(new Particle(originX, originY, color));
+            }
         }
 
-        for(let i = fwParticles.length - 1; i >= 0; i--) {
-            let p = fwParticles[i]; p.update(); p.draw(ctx);
-            if(p.alpha <= 0) fwParticles.splice(i, 1);
+        // Update & Draw
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.update();
+            p.draw(ctx);
+            if (p.alpha <= 0) {
+                particles.splice(i, 1); // Remove dead particles
+            }
         }
+
+        animationFrameId = requestAnimationFrame(render);
     };
 
-    const loop = () => { if (!isVisible) return; drawLogic(); rafId = requestAnimationFrame(loop); };
+    // --- INTERSECTION OBSERVER (Performance Guardian) ---
+    // Only run the fireworks engine when Scene 9 is on screen
+    const scene9 = document.getElementById('scene-9');
+    if (scene9) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    if (!isCelebrationActive) {
+                        isCelebrationActive = true;
+                        particles = []; // Clear old particles
+                        render();
+                    }
+                } else {
+                    isCelebrationActive = false;
+                    cancelAnimationFrame(animationFrameId);
+                    ctx.clearRect(0, 0, w, h); // Clear canvas to free memory
+                }
+            });
+        }, { threshold: 0.1 }); // Trigger when 10% visible
 
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            isVisible = entry.isIntersecting;
-            if (isVisible) loop(); else cancelAnimationFrame(rafId);
-        });
-    }, { threshold: 0 });
-    
-    observer.observe(canvas.parentElement);
-};
-
+        observer.observe(scene9);
+    }
+});
+                
