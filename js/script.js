@@ -1,15 +1,6 @@
 /**
- * js/script.js - GUARANTEED SCROLL STABILITY UPDATE
- * 
- * DEBUGGING REPORT:
- * 1. Root cause: Lenis scroll hijacking conflict. Third-party smooth scrolling libraries rely on virtual scroll coordinates and event hijacking via preventDefault(). On modern mobile browsers (especially Android Chrome), this heavily conflicts with native touch-action and passive event policies, resulting in unrecoverable scroll locks when initialization states drift.[span_0](start_span)[span_0](end_span)
- * 2. Exact filename: js/script.js & css/style.css
- * 3. Exact line number: script.js (Lenis init block) and style.css (html, body overflow rules).
- * 4. Exact fix: Completely REMOVED Lenis. Replaced with 100% native hardware-accelerated browser scrolling. Added standard CSS toggle ('scroll-locked') for the preloader phase to ensure deterministic scroll unblocking.
- * 5. Why the bug happened: lenis.stop() combined with CSS forcing overflow states desynced the DOM from the virtual scroll engine. When start() fired, the native touch events remained hijacked.[span_1](start_span)[span_1](end_span)[span_2](start_span)[span_2](end_span)
- * 6. Confirmation: Android Chrome native momentum scrolling now functions perfectly. Zero risk of scroll lock.[span_3](start_span)[span_3](end_span)
+ * js/script.js - Native Scrolling Engine with Fail-safes
  */
-
 document.addEventListener('DOMContentLoaded', () => {
 
     // ==========================================
@@ -34,7 +25,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (this.initialized) return;
             this.initialized = true;
             
-            if (typeof gsap !== 'undefined') gsap.ticker.useRAF(false);
+            try {
+                if (typeof gsap !== 'undefined') {
+                    // GSAP 3 compatibility: use sleep() to pause native ticking
+                    if (typeof gsap.ticker.sleep === 'function') {
+                        gsap.ticker.sleep();
+                    } else if (typeof gsap.ticker.useRAF === 'function') {
+                        gsap.ticker.useRAF(false);
+                    }
+                }
+            } catch (e) {
+                console.warn("[AnimationManager] GSAP ticker adjustment skipped:", e);
+            }
 
             document.addEventListener("visibilitychange", () => {
                 if (document.hidden) {
@@ -69,14 +71,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             
-            // Sync GSAP with our master loop
+            // Sync GSAP with our master loop safely
             if (typeof gsap !== 'undefined') {
-                try { gsap.ticker.tick(timestamp); } catch (e) {}
+                try { 
+                    if (typeof gsap.ticker.tick === 'function') {
+                        gsap.ticker.tick(timestamp); 
+                    }
+                } catch (e) {}
             }
 
             // Sync Canvas Engines
-            if (this.renderUniverse && this.universeTask) this.universeTask(timeScale);
-            if (this.renderFireworks && this.fireworksTask) this.fireworksTask(timeScale);
+            if (this.renderUniverse && typeof this.universeTask === 'function') {
+                try { this.universeTask(timeScale); } catch(e) {}
+            }
+            if (this.renderFireworks && typeof this.fireworksTask === 'function') {
+                try { this.fireworksTask(timeScale); } catch(e) {}
+            }
 
             this.rafId = requestAnimationFrame(this.masterLoop.bind(this));
         }
@@ -131,11 +141,23 @@ document.addEventListener('DOMContentLoaded', () => {
             enterBtn.addEventListener('click', () => {
                 enterBtn.style.pointerEvents = 'none';
                 
-                // CRITICAL FIX: Unlock native scroll securely by removing CSS lock class
-                document.body.classList.remove('scroll-locked');
+                // CRITICAL FIX: Unlock native scroll securely
+                if (document.body) document.body.classList.remove('scroll-locked');
+                
+                // CRITICAL FIX: Fallback timeout forces unblock regardless of GSAP state
+                const forceHidePreloader = setTimeout(() => {
+                    if (preloader && preloader.style.display !== 'none') {
+                        preloader.style.display = 'none';
+                        try {
+                            if (typeof window.initStoryAnimations === 'function') window.initStoryAnimations();
+                        } catch(e) { console.warn("[Failsafe] initStoryAnimations skip", e); }
+                    }
+                }, 2000);
 
-                // Start master loop to ensure GSAP animations tick during fade out
-                window.AnimationManager.init();
+                // Initialize Master Loop safely
+                try {
+                    window.AnimationManager.init();
+                } catch(e) { console.warn("[AnimationManager] Init failed:", e); }
 
                 try {
                     if (typeof gsap !== 'undefined') {
@@ -143,17 +165,26 @@ document.addEventListener('DOMContentLoaded', () => {
                             opacity: 0, 
                             duration: 1.5, 
                             onComplete: () => {
+                                clearTimeout(forceHidePreloader);
                                 if (preloader) preloader.style.display = 'none';
-                                if (typeof window.initStoryAnimations === 'function') window.initStoryAnimations();
+                                try {
+                                    if (typeof window.initStoryAnimations === 'function') window.initStoryAnimations();
+                                } catch(e) { console.warn("[GSAP] initStoryAnimations error:", e); }
                             }
                         });
                     } else {
+                        clearTimeout(forceHidePreloader);
                         if (preloader) preloader.style.display = 'none';
-                        if (typeof window.initStoryAnimations === 'function') window.initStoryAnimations();
+                        try {
+                            if (typeof window.initStoryAnimations === 'function') window.initStoryAnimations();
+                        } catch(e) { console.warn("[GSAP Fallback] initStoryAnimations error:", e); }
                     }
                 } catch(e) { 
+                    clearTimeout(forceHidePreloader);
                     if (preloader) preloader.style.display = 'none';
-                    if (typeof window.initStoryAnimations === 'function') window.initStoryAnimations();
+                    try {
+                        if (typeof window.initStoryAnimations === 'function') window.initStoryAnimations();
+                    } catch(e) {}
                 }
                 
                 try {
@@ -165,7 +196,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     };
-    initPreloader();
+    
+    // Safely attempt preloader init
+    try {
+        initPreloader();
+    } catch(e) {
+        console.error("[Preloader] Critical Failure", e);
+        if (document.body) document.body.classList.remove('scroll-locked');
+    }
 
 
     // ==========================================
@@ -177,27 +215,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     } catch(e) {}
 
-    // Setup native progress bar syncing
-    const progressBar = document.getElementById('progress-bar');
-    const progressContainer = document.getElementById('progress-container');
-    if (progressContainer && progressBar) {
-        Object.assign(progressContainer.style, {
-            position: 'fixed', top: 0, left: 0, width: '100%', height: '3px',
-            backgroundColor: 'rgba(255,255,255,0.05)', zIndex: 10000, pointerEvents: 'none'
-        });
-        Object.assign(progressBar.style, {
-            height: '100%', width: '0%', transformOrigin: 'left',
-            background: 'linear-gradient(90deg, #D4AF37, #F3E5AB)',
-            boxShadow: '0 0 10px rgba(212, 175, 55, 0.5)'
-        });
-        
-        window.addEventListener('scroll', () => {
-            const scrollTop = window.scrollY || document.documentElement.scrollTop;
-            const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-            const progress = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
-            progressBar.style.width = `${progress}%`;
-        }, { passive: true });
-    }
+    try {
+        const progressBar = document.getElementById('progress-bar');
+        const progressContainer = document.getElementById('progress-container');
+        if (progressContainer && progressBar) {
+            Object.assign(progressContainer.style, {
+                position: 'fixed', top: 0, left: 0, width: '100%', height: '3px',
+                backgroundColor: 'rgba(255,255,255,0.05)', zIndex: 10000, pointerEvents: 'none'
+            });
+            Object.assign(progressBar.style, {
+                height: '100%', width: '0%', transformOrigin: 'left',
+                background: 'linear-gradient(90deg, #D4AF37, #F3E5AB)',
+                boxShadow: '0 0 10px rgba(212, 175, 55, 0.5)'
+            });
+            
+            window.addEventListener('scroll', () => {
+                const scrollTop = window.scrollY || document.documentElement.scrollTop;
+                const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+                const progress = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+                progressBar.style.width = `${progress}%`;
+            }, { passive: true });
+        }
+    } catch(e) {}
 
 
     // ==========================================
@@ -261,39 +300,49 @@ document.addEventListener('DOMContentLoaded', () => {
         if ('IntersectionObserver' in window) {
             const sceneObserver = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
-                    if (entry.isIntersecting && window.AudioEngine) {
-                        const trackId = entry.target.getAttribute('data-audio');
-                        const shouldDuck = entry.target.getAttribute('data-duck-audio') === 'true';
-                        if (trackId) window.AudioEngine.playTrack(trackId, shouldDuck);
-                    }
+                    try {
+                        if (entry.isIntersecting && window.AudioEngine) {
+                            const trackId = entry.target.getAttribute('data-audio');
+                            const shouldDuck = entry.target.getAttribute('data-duck-audio') === 'true';
+                            if (trackId) window.AudioEngine.playTrack(trackId, shouldDuck);
+                        }
+                    } catch(e) {}
                 });
             }, { threshold: 0.5 });
             document.querySelectorAll('.scene[data-audio]').forEach(sec => sceneObserver.observe(sec));
 
             const videoObserver = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
-                    const video = entry.target;
-                    if (entry.isIntersecting) {
-                        if (!video.src && video.dataset.src) { video.src = video.dataset.src; video.load(); }
-                        if (typeof gsap !== 'undefined') { gsap.to(video, { opacity: 0.7, duration: 2 }); }
-                        let playPromise = video.play();
-                        if (playPromise !== undefined) playPromise.catch(e => {});
-                    } else {
-                        video.pause();
-                    }
+                    try {
+                        const video = entry.target;
+                        if (entry.isIntersecting) {
+                            if (!video.src && video.dataset.src) { video.src = video.dataset.src; video.load(); }
+                            if (typeof gsap !== 'undefined') { gsap.to(video, { opacity: 0.7, duration: 2 }); }
+                            let playPromise = video.play();
+                            if (playPromise !== undefined) playPromise.catch(e => {});
+                        } else {
+                            video.pause();
+                        }
+                    } catch(e) {}
                 });
             }, { threshold: 0.1 });
             document.querySelectorAll('.story-video').forEach(vid => videoObserver.observe(vid));
 
             const canvasObserver = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        window.AnimationManager.renderFireworks = true;
-                        window.AnimationManager.renderUniverse = false; 
-                    } else {
-                        window.AnimationManager.renderFireworks = false;
-                        window.AnimationManager.renderUniverse = true;
-                    }
+                    try {
+                        if (entry.isIntersecting) {
+                            if(window.AnimationManager) {
+                                window.AnimationManager.renderFireworks = true;
+                                window.AnimationManager.renderUniverse = false;
+                            }
+                        } else {
+                            if(window.AnimationManager) {
+                                window.AnimationManager.renderFireworks = false;
+                                window.AnimationManager.renderUniverse = true;
+                            }
+                        }
+                    } catch(e) {}
                 });
             }, { threshold: 0.1 });
             const scene9 = document.getElementById('scene-9');
