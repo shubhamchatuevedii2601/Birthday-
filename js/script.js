@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. THE SINGLE MASTER ANIMATION MANAGER
     // ==========================================
     window.AnimationManager = {
+        initialized: false, // Prevents double-execution
         isRunning: true,
         lastTime: performance.now(),
         rafId: null,
@@ -22,6 +23,8 @@ document.addEventListener('DOMContentLoaded', () => {
         fireworksTask: null,
 
         init() {
+            if (this.initialized) return;
+            this.initialized = true;
             console.log("[Execution] AnimationManager.init()");
             
             if (typeof gsap !== 'undefined') gsap.ticker.useRAF(false);
@@ -59,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // SAFE LENIS RAF (Won't crash engine if it fails)
+            // SAFE LENIS RAF
             if (window.lenis) {
                 try { window.lenis.raf(timestamp); } catch (e) {}
             }
@@ -127,6 +130,9 @@ document.addEventListener('DOMContentLoaded', () => {
             enterBtn.addEventListener('click', () => {
                 console.log("[Execution] Enter button click");
                 
+                // Prevent double clicks
+                enterBtn.style.pointerEvents = 'none';
+                
                 // CRITICAL: UNCONDITIONALLY UNLOCK NATIVE SCROLLING IMMEDIATELY
                 document.documentElement.style.overflowY = 'auto';
                 document.body.style.overflowY = 'auto';
@@ -135,6 +141,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (window.lenis) {
                     try { window.lenis.start(); } catch(e) { console.warn("[Lenis] Start Failed"); }
                 }
+
+                // CRITICAL FIX: START ANIMATION MANAGER IMMEDIATELY
+                // Ensures lenis.raf() is updating during the GSAP fade transition
+                window.AnimationManager.init();
 
                 try {
                     if (typeof gsap !== 'undefined') {
@@ -145,19 +155,19 @@ document.addEventListener('DOMContentLoaded', () => {
                                 console.log("[Execution] hide preloader");
                                 if (preloader) preloader.style.display = 'none';
                                 
-                                window.AnimationManager.init();
+                                // Delay GSAP ScrollTriggers until loader is completely gone
                                 if (typeof window.initStoryAnimations === 'function') window.initStoryAnimations();
                             }
                         });
                     } else {
                         console.log("[Execution] hide preloader (GSAP fallback)");
                         if (preloader) preloader.style.display = 'none';
-                        window.AnimationManager.init();
+                        if (typeof window.initStoryAnimations === 'function') window.initStoryAnimations();
                     }
                 } catch(e) { 
                     console.error("[Loader] Fade error:", e); 
                     if (preloader) preloader.style.display = 'none';
-                    window.AnimationManager.init();
+                    if (typeof window.initStoryAnimations === 'function') window.initStoryAnimations();
                 }
                 
                 try {
@@ -187,12 +197,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 duration: 1.5, 
                 easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
                 smoothWheel: true, 
-                smoothTouch: true, 
+                
+                // CRITICAL FIX: Disable touch hijacking. 
+                // Forces browser to use flawless native scrolling on mobile Android/iOS
+                smoothTouch: false, 
+                
                 touchMultiplier: 2.5, 
                 infinite: false
             });
             
-            // Stop initially for preloader
             lenis.stop(); 
             
             if (typeof ScrollTrigger !== 'undefined') {
@@ -225,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // ==========================================
-    // 4. AUDIO ENGINE (Unchanged, completely safe)
+    // 4. AUDIO ENGINE (Unchanged)
     // ==========================================
     try {
         window.AudioEngine = {
@@ -279,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // ==========================================
-    // 5. MASTER OBSERVERS
+    // 5. MASTER OBSERVERS (Unchanged)
     // ==========================================
     try {
         if ('IntersectionObserver' in window) {
@@ -325,4 +338,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     } catch(e) {}
 });
-                            
