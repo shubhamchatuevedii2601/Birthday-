@@ -1,11 +1,12 @@
 /**
- * js/script.js - Core Bootstrapping & Single-Loop Master Animation Engine
- * DeltaTime synced. Strictly 1 rAF loop. Auto-throttling on FPS drop.
+ * js/script.js - Core Bootstrapping & Fixed Preloader
+ * Ensures AnimationManager only hijacks rendering AFTER the preloader completes.
  */
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("[Execution] DOMContentLoaded");
 
     // ==========================================
-    // 1. THE SINGLE MASTER ANIMATION MANAGER
+    // 1. THE SINGLE MASTER ANIMATION MANAGER (Defined, but NOT started)
     // ==========================================
     window.AnimationManager = {
         isRunning: true,
@@ -14,19 +15,18 @@ document.addEventListener('DOMContentLoaded', () => {
         fpsHistory: [],
         lowQualityMode: false,
         
-        // Scene visibility states
         renderUniverse: true, 
         renderFireworks: false,
         
-        // Callbacks from canvas engines
         universeTask: null,
         fireworksTask: null,
 
         init() {
-            // Disable GSAP's native rAF. We own the loop now.
+            console.log("[Execution] AnimationManager.init()");
+            
+            // Take over GSAP's ticker only AFTER preloader is done
             if (typeof gsap !== 'undefined') gsap.ticker.useRAF(false);
 
-            // Pause ALL rendering when tab is hidden (Saves 100% battery)
             document.addEventListener("visibilitychange", () => {
                 if (document.hidden) {
                     this.isRunning = false;
@@ -37,22 +37,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            // Start Master Loop
             requestAnimationFrame(this.masterLoop.bind(this));
         },
 
         masterLoop(timestamp) {
             if (!this.isRunning) return;
 
-            // Calculate DeltaTime (dt)
             const dt = timestamp - this.lastTime;
             this.lastTime = timestamp;
-
-            // Cap dt at 50ms to prevent massive jumps if tab lags
             const safeDt = Math.min(dt, 50); 
-            const timeScale = safeDt / 16.666; // 1.0 at 60FPS
+            const timeScale = safeDt / 16.666; 
 
-            // FPS Monitor & Dynamic Throttling
             if (safeDt > 0) {
                 const currentFps = 1000 / safeDt;
                 this.fpsHistory.push(currentFps);
@@ -60,20 +55,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 this.fps = this.fpsHistory.reduce((a, b) => a + b) / this.fpsHistory.length;
 
-                // If average FPS drops below 50, permanently enable low quality mode
                 if (this.fps < 50 && !this.lowQualityMode) {
                     this.lowQualityMode = true;
-                    console.warn("[AnimationManager] FPS dropped. Activating Low Quality Mode.");
                 }
             }
 
-            // A. UPDATE LENIS (Smooth Scroll)
             if (window.lenis) window.lenis.raf(timestamp);
-
-            // B. UPDATE GSAP (Animations & ScrollTriggers)
             if (typeof gsap !== 'undefined') gsap.ticker.tick(timestamp);
 
-            // C. UPDATE CANVAS ENGINES (Time-scaled)
             if (this.renderUniverse && this.universeTask) {
                 this.universeTask(timeScale);
             }
@@ -81,19 +70,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.fireworksTask(timeScale);
             }
 
-            // Loop
             requestAnimationFrame(this.masterLoop.bind(this));
         }
     };
-
-    // Initialize the Master Engine immediately
-    window.AnimationManager.init();
 
 
     // ==========================================
     // 2. PRELOADER WITH 3-SECOND FAILSAFE
     // ==========================================
     const initPreloader = () => {
+        console.log("[Execution] initPreloader()");
+        
         const preloader = document.getElementById('preloader');
         const enterBtn = document.getElementById('enter-btn');
         const loaderFill = document.querySelector('.loader-fill');
@@ -105,6 +92,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const showEntry = () => {
             if (isReady) return;
             isReady = true;
+            console.log("[Execution] showEntry()");
+            
             if (loadText) loadText.style.display = 'none';
             if (loaderFill) loaderFill.style.width = '100%';
             if (enterBtn) {
@@ -128,24 +117,42 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (loaderFill) loaderFill.style.width = `${progress}%`;
                 if (loadText) loadText.innerText = `Igniting stars... ${Math.floor(progress)}%`;
             } catch (e) {
-                clearInterval(simInterval); showEntry();
+                clearInterval(simInterval); 
+                showEntry();
             }
         }, 150);
 
         if (enterBtn) {
             enterBtn.addEventListener('click', () => {
+                console.log("[Execution] Enter button click");
+                
                 try {
                     if (typeof gsap !== 'undefined') {
-                        gsap.to(preloader, { opacity: 0, duration: 1.5, onComplete: () => {
-                            if (preloader) preloader.style.display = 'none';
-                            if (window.lenis) window.lenis.start();
-                            if (typeof window.initStoryAnimations === 'function') window.initStoryAnimations();
-                        }});
+                        gsap.to(preloader, { 
+                            opacity: 0, 
+                            duration: 1.5, 
+                            onComplete: () => {
+                                console.log("[Execution] hide preloader");
+                                if (preloader) preloader.style.display = 'none';
+                                if (window.lenis) window.lenis.start();
+                                
+                                // START ANIMATION MANAGER ONLY NOW
+                                window.AnimationManager.init();
+                                
+                                if (typeof window.initStoryAnimations === 'function') window.initStoryAnimations();
+                            }
+                        });
                     } else {
+                        console.log("[Execution] hide preloader");
                         if (preloader) preloader.style.display = 'none';
                         if (window.lenis) window.lenis.start();
+                        
+                        // START ANIMATION MANAGER ONLY NOW
+                        window.AnimationManager.init();
                     }
-                } catch(e) { console.error("[Loader] Fade error:", e); }
+                } catch(e) { 
+                    console.error("[Loader] Fade error:", e); 
+                }
                 
                 try {
                     const firstScene = document.getElementById('scene-1');
@@ -156,6 +163,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     };
+    
+    // START PRELOADER IMMEDIATELY
     initPreloader();
 
 
@@ -261,7 +270,6 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         if ('IntersectionObserver' in window) {
             
-            // Audio Scene Observer
             const sceneObserver = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting && window.AudioEngine) {
@@ -273,7 +281,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }, { threshold: 0.5 });
             document.querySelectorAll('.scene[data-audio]').forEach(sec => sceneObserver.observe(sec));
 
-            // Video Observer
             const videoObserver = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
                     const video = entry.target;
@@ -289,12 +296,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }, { threshold: 0.1 });
             document.querySelectorAll('.story-video').forEach(vid => videoObserver.observe(vid));
 
-            // Canvas Engine Router (Pauses Universe during Fireworks)
             const canvasObserver = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
                         window.AnimationManager.renderFireworks = true;
-                        window.AnimationManager.renderUniverse = false; // Turn off universe logic to save CPU
+                        window.AnimationManager.renderUniverse = false; 
                     } else {
                         window.AnimationManager.renderFireworks = false;
                         window.AnimationManager.renderUniverse = true;
