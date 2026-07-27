@@ -1,5 +1,5 @@
 /**
- * js/script.js - Native Scrolling Engine with Fail-safes
+ * js/script.js - GUARANTEED PRELOADER DISMISSAL & NATIVE SCROLL
  */
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -25,18 +25,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (this.initialized) return;
             this.initialized = true;
             
-            try {
-                if (typeof gsap !== 'undefined') {
-                    // GSAP 3 compatibility: use sleep() to pause native ticking
-                    if (typeof gsap.ticker.sleep === 'function') {
-                        gsap.ticker.sleep();
-                    } else if (typeof gsap.ticker.useRAF === 'function') {
-                        gsap.ticker.useRAF(false);
-                    }
-                }
-            } catch (e) {
-                console.warn("[AnimationManager] GSAP ticker adjustment skipped:", e);
-            }
+            // Allow GSAP to manage its own ticker. DO NOT hijack it. 
+            // Hijacking it caused race conditions on mobile.
 
             document.addEventListener("visibilitychange", () => {
                 if (document.hidden) {
@@ -70,17 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     this.lowQualityMode = true;
                 }
             }
-            
-            // Sync GSAP with our master loop safely
-            if (typeof gsap !== 'undefined') {
-                try { 
-                    if (typeof gsap.ticker.tick === 'function') {
-                        gsap.ticker.tick(timestamp); 
-                    }
-                } catch (e) {}
-            }
 
-            // Sync Canvas Engines
+            // Sync Canvas Engines ONLY
             if (this.renderUniverse && typeof this.universeTask === 'function') {
                 try { this.universeTask(timeScale); } catch(e) {}
             }
@@ -94,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // ==========================================
-    // 2. PRELOADER & NATIVE SCROLL UNLOCKER
+    // 2. PRELOADER - PLAIN JS FALLBACK GUARANTEE
     // ==========================================
     const initPreloader = () => {
         const preloader = document.getElementById('preloader');
@@ -143,50 +124,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // CRITICAL FIX: Unlock native scroll securely
                 if (document.body) document.body.classList.remove('scroll-locked');
-                
-                // CRITICAL FIX: Fallback timeout forces unblock regardless of GSAP state
-                const forceHidePreloader = setTimeout(() => {
-                    if (preloader && preloader.style.display !== 'none') {
+
+                // CRITICAL FIX: Use pure plain Javascript CSS transitions to fade out
+                // Completely bypasses GSAP to guarantee dismissal even if GSAP crashes
+                if (preloader) {
+                    preloader.style.transition = 'opacity 1.5s ease';
+                    preloader.style.opacity = '0';
+                    
+                    setTimeout(() => {
                         preloader.style.display = 'none';
                         try {
                             if (typeof window.initStoryAnimations === 'function') window.initStoryAnimations();
-                        } catch(e) { console.warn("[Failsafe] initStoryAnimations skip", e); }
-                    }
-                }, 2000);
+                        } catch(e) { console.warn("[SafeFallback] GSAP Animations skipped.", e); }
+                    }, 1500);
+                }
 
-                // Initialize Master Loop safely
+                // Initialize Master Loop securely
                 try {
                     window.AnimationManager.init();
                 } catch(e) { console.warn("[AnimationManager] Init failed:", e); }
-
-                try {
-                    if (typeof gsap !== 'undefined') {
-                        gsap.to(preloader, { 
-                            opacity: 0, 
-                            duration: 1.5, 
-                            onComplete: () => {
-                                clearTimeout(forceHidePreloader);
-                                if (preloader) preloader.style.display = 'none';
-                                try {
-                                    if (typeof window.initStoryAnimations === 'function') window.initStoryAnimations();
-                                } catch(e) { console.warn("[GSAP] initStoryAnimations error:", e); }
-                            }
-                        });
-                    } else {
-                        clearTimeout(forceHidePreloader);
-                        if (preloader) preloader.style.display = 'none';
-                        try {
-                            if (typeof window.initStoryAnimations === 'function') window.initStoryAnimations();
-                        } catch(e) { console.warn("[GSAP Fallback] initStoryAnimations error:", e); }
-                    }
-                } catch(e) { 
-                    clearTimeout(forceHidePreloader);
-                    if (preloader) preloader.style.display = 'none';
-                    try {
-                        if (typeof window.initStoryAnimations === 'function') window.initStoryAnimations();
-                    } catch(e) {}
-                }
                 
+                // Audio Engine kickstart
                 try {
                     const firstScene = document.getElementById('scene-1');
                     if (firstScene && window.AudioEngine) {
