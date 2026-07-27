@@ -13,7 +13,7 @@
     --glass-border: rgba(255, 255, 255, 0.08);
 }
 
-/* --- RESET & ACCESSIBILITY --- */
+/* --- RESET & SCROLL UNLOCK (MOBILE FIX) --- */
 * {
     margin: 0; 
     padding: 0; 
@@ -24,11 +24,28 @@ html, body {
     background-color: var(--bg-deep);
     color: var(--text-main);
     font-family: 'Inter', sans-serif;
-    overscroll-behavior: none; /* Crucial for Lenis Smooth Scroll */
-    touch-action: pan-y; /* Completely blocks mobile pinch-to-zoom */
-    overflow-x: hidden;
+    overscroll-behavior: none; 
+    touch-action: pan-y; /* CRITICAL: Allows vertical touch scrolling on Android/iOS */
+    overflow-x: hidden !important;
+    overflow-y: auto !important; /* CRITICAL: Native fallback for vertical scroll */
     width: 100%;
+    height: auto !important; /* CRITICAL: Prevents 100vh locking */
     -webkit-font-smoothing: antialiased;
+}
+
+/* CRITICAL: Explicit definitions for GSAP/Lenis wrappers to prevent scroll trapping */
+#smooth-wrapper {
+    position: relative;
+    width: 100%;
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: visible; /* Allows content to push height downwards naturally */
+}
+
+#smooth-content {
+    position: relative;
+    width: 100%;
+    height: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -176,7 +193,7 @@ html, body {
     object-fit: cover;
     border-radius: 20px;
     box-shadow: 0 20px 50px rgba(0,0,0,0.8);
-    margin-bottom: -50px; /* Overlaps with glass content */
+    margin-bottom: -50px; 
     z-index: 2;
 }
 .glass-hero .glass-content {
@@ -200,7 +217,7 @@ html, body {
 }
 
 @media (max-width: 768px) {
-    .cinematic-wrapper { aspect-ratio: 16/9; } /* Better aspect ratio for mobile */
+    .cinematic-wrapper { aspect-ratio: 16/9; } 
 }
 
 .story-video { 
