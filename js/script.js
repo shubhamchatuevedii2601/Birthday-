@@ -1,10 +1,12 @@
 /**
- * js/script.js - Fixed & Hardened Architecture
- * Zero infinite-loading. Fallbacks for missing assets and libraries.
+ * js/script.js - Core Bootstrapping & Fallbacks
+ * 100% Non-blocking execution trace.
  */
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- 1. PRELOADER (Moved to top to guarantee execution) ---
+    // ==========================================
+    // 1. HOISTED PRELOADER WITH 3-SECOND FAILSAFE
+    // ==========================================
     const initPreloader = () => {
         const preloader = document.getElementById('preloader');
         const enterBtn = document.getElementById('enter-btn');
@@ -12,108 +14,96 @@ document.addEventListener('DOMContentLoaded', () => {
         const loadText = document.getElementById('load-text');
         
         let progress = 0;
-        let preloaderFinished = false;
+        let isReady = false;
 
-        const revealEnterButton = () => {
-            if (preloaderFinished) return;
-            preloaderFinished = true;
-            
-            try {
-                if (loadText) loadText.style.display = 'none';
-                if (loaderFill) loaderFill.style.width = '100%';
-                if (enterBtn) {
-                    enterBtn.classList.remove('hidden');
-                    enterBtn.style.display = 'inline-block';
-                    enterBtn.style.opacity = '1';
-                    enterBtn.style.pointerEvents = 'auto';
-                }
-            } catch(e) { console.error("[Loader] Error showing button:", e); }
+        const showEntry = () => {
+            if (isReady) return;
+            isReady = true;
+            if (loadText) loadText.style.display = 'none';
+            if (loaderFill) loaderFill.style.width = '100%';
+            if (enterBtn) {
+                enterBtn.classList.remove('hidden');
+                enterBtn.style.opacity = '1';
+                enterBtn.style.pointerEvents = 'auto';
+            }
         };
 
-        // STRICT 3-SECOND FAILSAFE: Forces entry even if assets/scripts fail.
+        // STRICT 3-SECOND TIMEOUT: Always unblock the user, no matter what fails.
         const failsafeTimer = setTimeout(() => {
-            console.warn("[Failsafe] Loader exceeded 3 seconds. Forcing entry.");
-            revealEnterButton();
+            console.warn("[Failsafe] 3-second limit reached. Forcing website entry.");
+            showEntry();
         }, 3000);
 
-        // Normal Progress Simulation
         const simInterval = setInterval(() => {
             try {
-                progress += Math.random() * 15;
+                progress += Math.random() * 12;
                 if (progress >= 100) {
                     progress = 100;
                     clearInterval(simInterval);
                     clearTimeout(failsafeTimer);
-                    revealEnterButton();
+                    showEntry();
                 }
-                if (loaderFill && progress <= 100) loaderFill.style.width = `${progress}%`;
-                if (loadText && progress <= 100) loadText.innerText = `Igniting stars... ${Math.floor(progress)}%`;
-            } catch(e) {
-                console.error("[Loader] Interval error:", e);
+                if (loaderFill) loaderFill.style.width = `${progress}%`;
+                if (loadText) loadText.innerText = `Igniting stars... ${Math.floor(progress)}%`;
+            } catch (e) {
                 clearInterval(simInterval);
-                revealEnterButton(); // Force reveal on error
+                showEntry();
             }
         }, 150);
 
-        // Button Click Handler (Transition to Site)
         if (enterBtn) {
             enterBtn.addEventListener('click', () => {
+                // Remove preloader
                 try {
-                    // Attempt GSAP fade, fallback to instant hide if GSAP is missing
                     if (typeof gsap !== 'undefined') {
                         gsap.to(preloader, { opacity: 0, duration: 1.5, onComplete: () => {
-                            if(preloader) preloader.style.display = 'none';
-                            if(window.lenis) window.lenis.start();
-                            if(typeof window.initStoryAnimations === 'function') {
-                                try { window.initStoryAnimations(); } catch(e) { console.error("[Animations] Error:", e); }
-                            }
+                            if (preloader) preloader.style.display = 'none';
+                            if (window.lenis) window.lenis.start();
+                            if (typeof window.initStoryAnimations === 'function') window.initStoryAnimations();
                         }});
                     } else {
-                        if(preloader) preloader.style.display = 'none';
-                        if(window.lenis) window.lenis.start();
+                        // Fallback if GSAP failed to load
+                        if (preloader) preloader.style.display = 'none';
+                        if (window.lenis) window.lenis.start();
                     }
-                } catch(e) {
-                    console.error("[Loader] Transition error:", e);
-                    if(preloader) preloader.style.display = 'none';
-                }
+                } catch(e) { console.error("[Loader] Fade error:", e); }
                 
-                // Audio Engine Kickstart
+                // Kickstart Audio
                 try {
                     const firstScene = document.getElementById('scene-1');
                     if (firstScene && window.AudioEngine) {
                         window.AudioEngine.playTrack(firstScene.getAttribute('data-audio'), false);
                     }
-                } catch(e) { console.warn("[Audio] Failed to start on enter:", e); }
+                } catch(e) { console.warn("[Audio] Engine skip:", e); }
             });
         }
     };
 
-    // Initialize preloader immediately
-    try { initPreloader(); } catch(e) { console.error("[Loader] Init failed:", e); }
+    // Execute immediately before anything else can crash
+    initPreloader();
 
 
-    // --- 2. GSAP INITIALIZATION ---
+    // ==========================================
+    // 2. PROTECTED LIBRARY INITIALIZATIONS
+    // ==========================================
+    
+    // GSAP
     try {
         if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
             gsap.registerPlugin(ScrollTrigger);
         } else {
-            console.warn("[GSAP] Library not loaded. Visual animations will fallback gracefully.");
+            console.error("[GSAP] ReferenceError bypassed. GSAP library is missing.");
         }
     } catch(e) { console.error("[GSAP] Init Error:", e); }
 
-
-    // --- 3. LENIS SCROLL INITIALIZATION ---
+    // LENIS
     try {
         if (typeof Lenis !== 'undefined') {
             const lenis = new Lenis({
                 duration: 1.5,
                 easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-                smoothWheel: true,
-                smoothTouch: true,
-                touchMultiplier: 2.5,
-                infinite: false
+                smoothWheel: true, smoothTouch: true, touchMultiplier: 2.5, infinite: false
             });
-
             lenis.stop(); 
             if (typeof ScrollTrigger !== 'undefined') lenis.on('scroll', ScrollTrigger.update);
             if (typeof gsap !== 'undefined') {
@@ -140,22 +130,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         } else {
-            console.warn("[Lenis] Library not found. Reverting to native browser scroll.");
+            console.error("[Lenis] ReferenceError bypassed. Lenis library is missing.");
         }
     } catch(e) { console.error("[Lenis] Init Error:", e); }
 
 
-    // --- 4. CINEMATIC AUDIO ENGINE ---
+    // ==========================================
+    // 3. PROTECTED AUDIO ENGINE
+    // ==========================================
     try {
         window.AudioEngine = {
-            playerA: new Audio(),
-            playerB: new Audio(),
-            activePlayer: null,
-            isUserMuted: false, 
-            currentTrackId: null,
-            baseVolume: 0.4,
-            duckVolume: 0.1,
-            fadeDuration: 2.5, 
+            playerA: new Audio(), playerB: new Audio(),
+            activePlayer: null, isUserMuted: false, currentTrackId: null,
+            baseVolume: 0.4, duckVolume: 0.1, fadeDuration: 2.5, 
             tracks: {
                 'ambient-space': 'media/music1.mp3',
                 'soft-piano': 'media/music2.mp3',
@@ -165,8 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 'ending-piano': 'media/music6.mp3'
             },
             init() {
-                this.playerA.loop = true;
-                this.playerB.loop = true;
+                this.playerA.loop = true; this.playerB.loop = true;
                 this.activePlayer = this.playerA;
             },
             playTrack(trackId, shouldDuck) {
@@ -190,87 +176,75 @@ document.addEventListener('DOMContentLoaded', () => {
                     const nextPlayer = this.activePlayer === this.playerA ? this.playerB : this.playerA;
                     const oldPlayer = this.activePlayer;
                     
-                    nextPlayer.src = src;
-                    nextPlayer.volume = 0;
+                    nextPlayer.src = src; nextPlayer.volume = 0;
                     
                     if (!this.isUserMuted) {
+                        // Catch Promise rejections for missing files or strict autoplay blocks
                         let playPromise = nextPlayer.play();
-                        // Handle browser autoplay policies & 404 missing files safely
-                        if (playPromise !== undefined) {
-                            playPromise.catch(e => console.warn("[Audio] File missing or autoplay blocked:", e));
-                        }
+                        if (playPromise !== undefined) playPromise.catch(e => console.warn("[Audio] Missing/Blocked:", e));
                         
                         if (typeof gsap !== 'undefined') {
                             gsap.to(nextPlayer, { volume: targetVol, duration: this.fadeDuration, overwrite: true });
                             gsap.to(oldPlayer, { volume: 0, duration: this.fadeDuration, overwrite: true, onComplete: () => oldPlayer.pause() });
                         } else {
-                            nextPlayer.volume = targetVol;
-                            oldPlayer.pause();
+                            nextPlayer.volume = targetVol; oldPlayer.pause();
                         }
                     } else {
-                        nextPlayer.volume = 0;
-                        oldPlayer.pause();
+                        nextPlayer.volume = 0; oldPlayer.pause();
                     }
                     
-                    this.activePlayer = nextPlayer;
-                    this.activePlayer.targetVol = targetVol;
-                } catch(e) { console.error("[Audio] Playback Engine Error:", e); }
+                    this.activePlayer = nextPlayer; this.activePlayer.targetVol = targetVol;
+                } catch(e) { console.error("[Audio] Playback Error:", e); }
             }
         };
         window.AudioEngine.init();
-    } catch(e) { console.error("[Audio] Engine Init Error:", e); }
+    } catch(e) { console.error("[Audio] Engine Error:", e); }
 
 
-    // --- 5. SCENE OBSERVER ---
+    // ==========================================
+    // 4. PROTECTED OBSERVERS (Audio & Video)
+    // ==========================================
     try {
         if ('IntersectionObserver' in window) {
+            
+            // Scene Observer
             const sceneObserver = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
-                    try {
-                        if (entry.isIntersecting && window.AudioEngine) {
-                            const trackId = entry.target.getAttribute('data-audio');
-                            const shouldDuck = entry.target.getAttribute('data-duck-audio') === 'true';
-                            if (trackId) window.AudioEngine.playTrack(trackId, shouldDuck);
-                        }
-                    } catch(e) { console.error("[Observer] Scene tracking error:", e); }
+                    if (entry.isIntersecting && window.AudioEngine) {
+                        const trackId = entry.target.getAttribute('data-audio');
+                        const shouldDuck = entry.target.getAttribute('data-duck-audio') === 'true';
+                        if (trackId) window.AudioEngine.playTrack(trackId, shouldDuck);
+                    }
                 });
             }, { threshold: 0.5 });
             document.querySelectorAll('.scene[data-audio]').forEach(sec => sceneObserver.observe(sec));
-        }
-    } catch(e) { console.error("[Observer] Scene Init Error:", e); }
 
-
-    // --- 6. VIDEO OBSERVER ---
-    try {
-        if ('IntersectionObserver' in window) {
+            // Video Observer
             const videoObserver = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
-                    try {
-                        const video = entry.target;
-                        if (entry.isIntersecting) {
-                            if (!video.src && video.dataset.src) {
-                                video.src = video.dataset.src;
-                                video.load();
-                            }
-                            if (typeof gsap !== 'undefined') {
-                                gsap.to(video, { opacity: 0.7, duration: 2 });
-                            } else {
-                                video.style.opacity = 0.7;
-                            }
-                            
-                            // Prevent unhandled promise rejection if video is missing
-                            let playPromise = video.play();
-                            if (playPromise !== undefined) {
-                                playPromise.catch(e => console.warn(`[Video] Missing asset or block on ${video.dataset.src}:`, e));
-                            }
-                        } else {
-                            video.pause();
+                    const video = entry.target;
+                    if (entry.isIntersecting) {
+                        if (!video.src && video.dataset.src) {
+                            video.src = video.dataset.src;
+                            video.load();
                         }
-                    } catch(e) { console.error("[Observer] Video tracking error:", e); }
+                        if (typeof gsap !== 'undefined') {
+                            gsap.to(video, { opacity: 0.7, duration: 2 });
+                        } else {
+                            video.style.opacity = 0.7;
+                        }
+                        
+                        // Catch Promise rejections for missing video assets
+                        let playPromise = video.play();
+                        if (playPromise !== undefined) playPromise.catch(e => console.warn(`[Video] Playback skipped for ${video.dataset.src}`, e));
+                    } else {
+                        video.pause();
+                    }
                 });
             }, { threshold: 0.1 });
             document.querySelectorAll('.story-video').forEach(vid => videoObserver.observe(vid));
         }
-    } catch(e) { console.error("[Observer] Video Init Error:", e); }
+    } catch(e) { console.error("[Observers] Observer Error:", e); }
 
 });
+                            
