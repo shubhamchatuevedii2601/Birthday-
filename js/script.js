@@ -1,16 +1,16 @@
 /**
- * js/script.js - Core Bootstrapping & Fixed Preloader
- * Ensures AnimationManager only hijacks rendering AFTER the preloader completes.
+ * js/script.js - Scroll-Lock Fixed & Native Fallback Enabled
  */
 document.addEventListener('DOMContentLoaded', () => {
     console.log("[Execution] DOMContentLoaded");
 
     // ==========================================
-    // 1. THE SINGLE MASTER ANIMATION MANAGER (Defined, but NOT started)
+    // 1. THE SINGLE MASTER ANIMATION MANAGER
     // ==========================================
     window.AnimationManager = {
         isRunning: true,
         lastTime: performance.now(),
+        rafId: null,
         fps: 60,
         fpsHistory: [],
         lowQualityMode: false,
@@ -24,20 +24,20 @@ document.addEventListener('DOMContentLoaded', () => {
         init() {
             console.log("[Execution] AnimationManager.init()");
             
-            // Take over GSAP's ticker only AFTER preloader is done
             if (typeof gsap !== 'undefined') gsap.ticker.useRAF(false);
 
             document.addEventListener("visibilitychange", () => {
                 if (document.hidden) {
                     this.isRunning = false;
+                    cancelAnimationFrame(this.rafId);
                 } else {
                     this.isRunning = true;
                     this.lastTime = performance.now();
-                    requestAnimationFrame(this.masterLoop.bind(this));
+                    this.rafId = requestAnimationFrame(this.masterLoop.bind(this));
                 }
             });
 
-            requestAnimationFrame(this.masterLoop.bind(this));
+            this.rafId = requestAnimationFrame(this.masterLoop.bind(this));
         },
 
         masterLoop(timestamp) {
@@ -54,29 +54,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (this.fpsHistory.length > 30) this.fpsHistory.shift();
                 
                 this.fps = this.fpsHistory.reduce((a, b) => a + b) / this.fpsHistory.length;
-
-                if (this.fps < 50 && !this.lowQualityMode) {
+                if (this.fps < 45 && !this.lowQualityMode) {
                     this.lowQualityMode = true;
                 }
             }
 
-            if (window.lenis) window.lenis.raf(timestamp);
-            if (typeof gsap !== 'undefined') gsap.ticker.tick(timestamp);
-
-            if (this.renderUniverse && this.universeTask) {
-                this.universeTask(timeScale);
+            // SAFE LENIS RAF (Won't crash engine if it fails)
+            if (window.lenis) {
+                try { window.lenis.raf(timestamp); } catch (e) {}
             }
-            if (this.renderFireworks && this.fireworksTask) {
-                this.fireworksTask(timeScale);
+            
+            if (typeof gsap !== 'undefined') {
+                try { gsap.ticker.tick(timestamp); } catch (e) {}
             }
 
-            requestAnimationFrame(this.masterLoop.bind(this));
+            if (this.renderUniverse && this.universeTask) this.universeTask(timeScale);
+            if (this.renderFireworks && this.fireworksTask) this.fireworksTask(timeScale);
+
+            this.rafId = requestAnimationFrame(this.masterLoop.bind(this));
         }
     };
 
 
     // ==========================================
-    // 2. PRELOADER WITH 3-SECOND FAILSAFE
+    // 2. PRELOADER & SCROLL UNLOCKER
     // ==========================================
     const initPreloader = () => {
         console.log("[Execution] initPreloader()");
@@ -126,6 +127,15 @@ document.addEventListener('DOMContentLoaded', () => {
             enterBtn.addEventListener('click', () => {
                 console.log("[Execution] Enter button click");
                 
+                // CRITICAL: UNCONDITIONALLY UNLOCK NATIVE SCROLLING IMMEDIATELY
+                document.documentElement.style.overflowY = 'auto';
+                document.body.style.overflowY = 'auto';
+                
+                // ATTEMPT TO UNLOCK LENIS
+                if (window.lenis) {
+                    try { window.lenis.start(); } catch(e) { console.warn("[Lenis] Start Failed"); }
+                }
+
                 try {
                     if (typeof gsap !== 'undefined') {
                         gsap.to(preloader, { 
@@ -134,24 +144,20 @@ document.addEventListener('DOMContentLoaded', () => {
                             onComplete: () => {
                                 console.log("[Execution] hide preloader");
                                 if (preloader) preloader.style.display = 'none';
-                                if (window.lenis) window.lenis.start();
                                 
-                                // START ANIMATION MANAGER ONLY NOW
                                 window.AnimationManager.init();
-                                
                                 if (typeof window.initStoryAnimations === 'function') window.initStoryAnimations();
                             }
                         });
                     } else {
-                        console.log("[Execution] hide preloader");
+                        console.log("[Execution] hide preloader (GSAP fallback)");
                         if (preloader) preloader.style.display = 'none';
-                        if (window.lenis) window.lenis.start();
-                        
-                        // START ANIMATION MANAGER ONLY NOW
                         window.AnimationManager.init();
                     }
                 } catch(e) { 
                     console.error("[Loader] Fade error:", e); 
+                    if (preloader) preloader.style.display = 'none';
+                    window.AnimationManager.init();
                 }
                 
                 try {
@@ -163,13 +169,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     };
-    
-    // START PRELOADER IMMEDIATELY
     initPreloader();
 
 
     // ==========================================
-    // 3. GSAP & LENIS SETUP
+    // 3. GSAP & LENIS SETUP WITH NATIVE FALLBACK
     // ==========================================
     try {
         if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
@@ -180,11 +184,20 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         if (typeof Lenis !== 'undefined') {
             const lenis = new Lenis({
-                duration: 1.5, easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-                smoothWheel: true, smoothTouch: true, touchMultiplier: 2.5, infinite: false
+                duration: 1.5, 
+                easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+                smoothWheel: true, 
+                smoothTouch: true, 
+                touchMultiplier: 2.5, 
+                infinite: false
             });
+            
+            // Stop initially for preloader
             lenis.stop(); 
-            if (typeof ScrollTrigger !== 'undefined') lenis.on('scroll', ScrollTrigger.update);
+            
+            if (typeof ScrollTrigger !== 'undefined') {
+                lenis.on('scroll', ScrollTrigger.update);
+            }
             window.lenis = lenis;
 
             const progressBar = document.getElementById('progress-bar');
@@ -204,11 +217,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         }
-    } catch(e) {}
+    } catch(e) {
+        console.warn("[Lenis] Init Failed. Guaranteeing native fallback.");
+        document.documentElement.style.overflowY = 'auto';
+        document.body.style.overflowY = 'auto';
+    }
 
 
     // ==========================================
-    // 4. AUDIO ENGINE
+    // 4. AUDIO ENGINE (Unchanged, completely safe)
     // ==========================================
     try {
         window.AudioEngine = {
@@ -216,12 +233,9 @@ document.addEventListener('DOMContentLoaded', () => {
             activePlayer: null, isUserMuted: false, currentTrackId: null,
             baseVolume: 0.4, duckVolume: 0.1, fadeDuration: 2.5, 
             tracks: {
-                'ambient-space': 'media/music1.mp3',
-                'soft-piano': 'media/music2.mp3',
-                'warm-acoustic': 'media/music3.mp3',
-                'emotional-build': 'media/music4.mp3',
-                'epic-celebration': 'media/music5.mp3',
-                'ending-piano': 'media/music6.mp3'
+                'ambient-space': 'media/music1.mp3', 'soft-piano': 'media/music2.mp3',
+                'warm-acoustic': 'media/music3.mp3', 'emotional-build': 'media/music4.mp3',
+                'epic-celebration': 'media/music5.mp3', 'ending-piano': 'media/music6.mp3'
             },
             init() {
                 this.playerA.loop = true; this.playerB.loop = true;
@@ -265,11 +279,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // ==========================================
-    // 5. MASTER OBSERVERS (Audio, Video, Canvas)
+    // 5. MASTER OBSERVERS
     // ==========================================
     try {
         if ('IntersectionObserver' in window) {
-            
             const sceneObserver = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting && window.AudioEngine) {
@@ -312,3 +325,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     } catch(e) {}
 });
+                            
