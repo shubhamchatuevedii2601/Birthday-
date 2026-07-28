@@ -1,138 +1,202 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Happy Birthday, Pyari Bauni</title>
-    <meta name="theme-color" content="#030508">
-    
-    <!-- Premium Fonts -->
+    <title>Happy Birthday Bauni ❤️</title>
+    <meta name="theme-color" content="#020111">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Great+Vibes&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Great+Vibes&family=Montserrat:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="scroll-locked">
+<body>
+    <!-- Audio -->
+    <audio id="bg-music" loop>
+        <source src="assets/music/background.mp3" type="audio/mpeg">
+    </audio>
 
-    <!-- Scroll Progress -->
-    <div id="progress-container"><div id="progress-bar"></div></div>
-
-    <!-- Global Canvas Overlays -->
-    <canvas id="universe-canvas"></canvas>
-    <div class="aurora-overlay"></div>
-    <div class="vignette"></div>
-    <div id="custom-cursor"></div>
-
-    <!-- Preloader -->
-    <div id="preloader">
-        <h1 class="font-cinzel gold-text glow">A Digital Memory</h1>
-        <div class="loader-line"><div class="loader-fill"></div></div>
-        <p id="load-text" class="font-inter">Igniting stars...</p>
-        <button id="enter-btn" class="hidden">Enter the Universe</button>
+    <!-- Loading Screen -->
+    <div id="loader" class="loader-container">
+        <div class="loader-content">
+            <div class="glass-circle">
+                <div class="golden-particles-loader"></div>
+                <div class="progress-text"><span id="progress-percentage">0</span>%</div>
+            </div>
+            <p class="loader-text">Awakening Magic...</p>
+        </div>
     </div>
 
-    <main id="smooth-wrapper">
-        <div id="smooth-content">
+    <!-- Canvas Background -->
+    <canvas id="magic-canvas"></canvas>
 
-            <!-- SCENE 1: Introduction -->
-            <section id="scene-1" class="scene" data-audio="ambient-space">
-                <div class="story-text">
-                    <h2 class="font-cinzel reveal-text">Hello, Shreya.</h2>
-                    <p class="font-inter reveal-text delay-1">The universe has been waiting for this exact moment.</p>
+    <!-- Main Content -->
+    <main id="story-container" class="hidden">
+        
+        <!-- Scene 1: Intro -->
+        <section id="scene-1" class="scene intro-scene">
+            <div class="intro-sequence">
+                <div id="intro-particle" class="particle-spark"></div>
+                <div id="intro-text-1" class="hidden-text">Tonight isn't just another night...</div>
+                <div id="intro-text-2" class="hidden-text highlight-text">Because someone incredibly special is celebrating today...</div>
+                <h1 id="intro-title" class="hidden-text main-title">Happy Birthday Bauni <span class="heart">❤️</span></h1>
+                <div class="scroll-indicator hidden-text" id="scroll-hint">
+                    <span>Discover</span>
+                    <div class="mouse"></div>
                 </div>
-            </section>
+            </div>
+        </section>
 
-            <!-- SCENE 2: Constellations -->
-            <section id="scene-2" class="scene" data-audio="ambient-space">
-                <div class="story-text text-right">
-                    <p class="font-inter reveal-text">Every star, every galaxy, perfectly aligned...</p>
-                    <h2 class="font-cinzel gold-text glow reveal-text delay-1">Just to celebrate you today.</h2>
-                </div>
-            </section>
+        <!-- Scene 2: Video 1 -->
+        <section id="scene-2" class="scene video-scene">
+            <div class="glass-panel video-container" data-aos="fade-up">
+                <video id="video-1" class="luxury-video" controls playsinline>
+                    <source src="assets/videos/video1.mp4" type="video/mp4">
+                </video>
+                <div class="video-overlay-particles"></div>
+            </div>
+        </section>
 
-            <!-- SCENE 3: Hero Reveal -->
-            <section id="scene-3" class="scene" data-audio="soft-piano">
-                <div class="glass-hero">
-                    <img src="media/hero.jpg" alt="Shreya" class="hero-img parallax-img" loading="lazy">
-                    <div class="glass-content">
-                        <p class="font-inter">But honestly, amidst all this cosmic beauty...</p>
-                        <h2 class="font-cinzel">Look at you, <span class="gold-text">Pyari.</span></h2>
+        <!-- Scene 3: Photo Story 1 -->
+        <section id="scene-3" class="scene photo-story">
+            <div class="photo-grid">
+                <!-- Polaroid Reveal -->
+                <div class="photo-wrapper polaroid-reveal" data-aos="polaroid">
+                    <div class="polaroid-frame">
+                        <div class="img-container">
+                            <img data-src="assets/photos/photo1.jpg" alt="Memory 1" class="lazy-load">
+                        </div>
+                        <p class="caption">A beautiful beginning</p>
                     </div>
                 </div>
-            </section>
-
-            <!-- SCENE 4: Video 1 -->
-            <section id="scene-4" class="scene video-scene" data-audio="soft-piano" data-duck-audio="true">
-                <div class="cinematic-wrapper">
-                    <video class="story-video" preload="none" data-src="media/video1.mp4" muted playsinline loop></video>
-                    <p class="subtitle font-inter">Some moments don't need words. They just need to be felt.</p>
+                <!-- Glass Frame Reveal -->
+                <div class="photo-wrapper glass-reveal" data-aos="glass">
+                    <div class="glass-frame">
+                        <img data-src="assets/photos/photo2.jpg" alt="Memory 2" class="lazy-load">
+                        <div class="glass-reflection"></div>
+                        <p class="caption glow-text">Endless smiles</p>
+                    </div>
                 </div>
-            </section>
-
-            <!-- SCENE 5: Memory Gallery -->
-            <section id="scene-5" class="scene" data-audio="warm-acoustic">
-                <div class="story-text mb-4">
-                    <p class="font-inter reveal-text">Remember these? You always know how to make ordinary days feel like magic, <span class="gold-text">Bauni.</span></p>
-                    <p class="font-inter reveal-text delay-1 text-sm opacity-70">Even when you're being utterly ridiculous.</p>
+                <!-- Flower Bloom Reveal -->
+                <div class="photo-wrapper bloom-reveal" data-aos="bloom">
+                    <div class="bloom-frame">
+                        <div class="petals-overlay"></div>
+                        <img data-src="assets/photos/photo3.jpg" alt="Memory 3" class="lazy-load">
+                        <p class="caption elegant">Radiant as ever</p>
+                    </div>
                 </div>
-                <div class="gallery-3d">
-                    <div class="memory-card"><img src="media/mem1.jpg" loading="lazy"></div>
-                    <div class="memory-card"><img src="media/mem2.jpg" loading="lazy"></div>
-                    <div class="memory-card"><img src="media/mem3.jpg" loading="lazy"></div>
+            </div>
+        </section>
+
+        <!-- Scene 4: Message -->
+        <section id="scene-4" class="scene message-scene">
+            <div class="glass-card message-card" data-aos="scale-up">
+                <div class="typing-container">
+                    <p id="typing-text" class="luxury-typography"></p>
                 </div>
-            </section>
+                <div class="floating-hearts-container"></div>
+            </div>
+        </section>
 
-            <!-- SCENE 6: Handwritten Letter -->
-            <section id="scene-6" class="scene" data-audio="warm-acoustic">
-                <div class="letter-wrapper glassmorphism">
-                    <h3 class="font-cinzel gold-text">A little note for you...</h3>
-                    <p class="font-handwriting typewriter-target">
-                        You might be getting older, but you'll always be the same beautiful soul.<br><br>
-                        (And yes, you're still short).
-                    </p>
+        <!-- Scene 5: Video 2 -->
+        <section id="scene-5" class="scene video-scene">
+            <div class="glass-panel video-container luxury-reveal" data-aos="fade-up-glow">
+                <video id="video-2" class="luxury-video" controls playsinline>
+                    <source src="assets/videos/video2.mp4" type="video/mp4">
+                </video>
+                <div class="bloom-lighting"></div>
+            </div>
+        </section>
+
+        <!-- Scene 6: Photo Story 2 -->
+        <section id="scene-6" class="scene photo-story">
+            <div class="photo-grid alternate-grid">
+                <!-- Butterfly Reveal -->
+                <div class="photo-wrapper butterfly-reveal" data-aos="butterfly">
+                    <div class="butterfly-frame">
+                        <div class="butterflies-container"></div>
+                        <img data-src="assets/photos/photo4.jpg" alt="Memory 4" class="lazy-load">
+                        <p class="caption">Magic in the air</p>
+                    </div>
                 </div>
-            </section>
-
-            <!-- SCENE 7: Video 2 -->
-            <section id="scene-7" class="scene video-scene" data-audio="emotional-build" data-duck-audio="true">
-                <div class="cinematic-wrapper">
-                    <video class="story-video" preload="none" data-src="media/video2.mp4" muted playsinline loop></video>
-                    <p class="subtitle font-inter">Never lose that spark. Just keep being exactly who you are.</p>
+                <!-- Sparkle Reveal -->
+                <div class="photo-wrapper sparkle-reveal" data-aos="sparkle">
+                    <div class="sparkle-frame">
+                        <canvas class="sparkle-canvas"></canvas>
+                        <img data-src="assets/photos/photo5.jpg" alt="Memory 5" class="lazy-load">
+                        <p class="caption">Unforgettable</p>
+                    </div>
                 </div>
-            </section>
-
-            <!-- SCENE 8: The Gift -->
-            <section id="scene-8" class="scene" data-audio="emotional-build">
-                <div class="gift-container" id="gift-trigger">
-                    <img src="assets/gift.webp" alt="A gift for you" class="gift-box">
-                    <p class="font-inter glow-text mt-2">I couldn't just give you something ordinary.<br>Tap to open...</p>
+                <!-- Golden Ribbon Reveal -->
+                <div class="photo-wrapper ribbon-reveal" data-aos="ribbon">
+                    <div class="ribbon-frame">
+                        <div class="golden-ribbons"></div>
+                        <img data-src="assets/photos/photo6.jpg" alt="Memory 6" class="lazy-load">
+                        <p class="caption">Pure joy</p>
+                    </div>
                 </div>
-            </section>
+            </div>
+        </section>
 
-            <!-- SCENE 9: Celebration -->
-            <section id="scene-9" class="scene" data-audio="epic-celebration">
-                <canvas id="fireworks-canvas"></canvas>
-                <h1 class="font-cinzel gold-text grand-title">The whole sky is lighting up for you!</h1>
-            </section>
-
-            <!-- SCENE 10: Fade to Black -->
-            <section id="scene-10" class="scene" data-audio="ending-piano">
-                <div class="ending-text text-center">
-                    <p class="font-inter reveal-text">May you always find light, even in the dark.</p>
-                    <h1 class="font-handwriting gold-text glow reveal-text delay-2 mt-4 text-6xl">Happy Birthday, Pyari Bauni.</h1>
+        <!-- Scene 7: Interactive Cake -->
+        <section id="scene-7" class="scene cake-scene">
+            <div class="cake-container" data-aos="fade-in">
+                <h2 class="cake-title">Make a Wish...</h2>
+                <p class="cake-instruction">Blow into the microphone or tap the candles</p>
+                <div class="cake-3d">
+                    <div class="cake-tier top-tier">
+                        <!-- Candles added via JS -->
+                        <div class="candles-wrapper" id="candles-container"></div>
+                    </div>
+                    <div class="cake-tier middle-tier"></div>
+                    <div class="cake-tier bottom-tier"></div>
+                    <div class="cake-plate"></div>
                 </div>
-            </section>
+            </div>
+        </section>
 
-        </div>
+        <!-- Scene 8: Finale -->
+        <section id="scene-8" class="scene finale-scene">
+            <div class="finale-content">
+                <h1 class="finale-title">Happy Birthday Bauni <span class="heart">❤️</span></h1>
+                <p class="finale-subtitle">The world became brighter the day you were born.</p>
+                
+                <!-- Heart formation container -->
+                <div id="heart-formation" class="heart-formation-container"></div>
+                
+                <button id="surprise-btn" class="glow-button hidden">
+                    <span class="sparkle-icon">✨</span> One Last Surprise
+                </button>
+            </div>
+        </section>
     </main>
 
-    <!-- CORE EXTERNAL DEPENDENCIES -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
-    <script src="https://unpkg.com/@studio-freight/lenis@1.0.33/dist/lenis.min.js"></script>
+    <!-- Scene 9: Envelope / Letter -->
+    <div id="envelope-modal" class="modal-overlay hidden">
+        <div class="envelope-container">
+            <div class="envelope">
+                <div class="envelope-flap"></div>
+                <div class="envelope-pocket"></div>
+                <div class="letter">
+                    <div class="letter-content">
+                        <h3 class="letter-greeting">Dearest Bauni,</h3>
+                        <p class="letter-body">
+                            Words can hardly capture the magic you bring into this world.
+                            May your birthday be as beautiful, radiant, and extraordinary as you are.
+                            Here's to endless joy, boundless love, and dreams coming true.
+                        </p>
+                        <p class="letter-sign">With all my heart,<br>Your Secret Admirer</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer hidden" id="modal-footer">
+            <p>Thank You For Watching ❤️</p>
+            <button id="close-modal" class="text-btn">Close</button>
+        </div>
+    </div>
 
-    <!-- SINGLE MONOLITHIC ENGINE -->
     <script src="js/script.js"></script>
 </body>
 </html>
